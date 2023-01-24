@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"os"
 
 	tasks "google.golang.org/genproto/googleapis/cloud/tasks/v2"
 	v1 "google.golang.org/genproto/googleapis/iam/v1"
@@ -363,12 +364,19 @@ func createInitialQueue(emulatorServer *Server, name string) {
 func main() {
 	var initialQueues arrayFlags
 
-	host := flag.String("host", "localhost", "The host name")
-	port := flag.String("port", "8123", "The port")
+	host := os.Getenv("QUEUE_HOST")
+	port := os.Getenv("QUEUE_PORT")
+    if host == "" {
+        host = "localhost"
+    }
+    if port == "" {
+        port = "8123"
+    }
+
 	openidIssuer := flag.String("openid-issuer", "", "URL to serve the OpenID configuration on, if required")
 	hardResetOnPurgeQueue := flag.Bool("hard-reset-on-purge-queue", false, "Set to force the 'Purge Queue' call to perform a hard reset of all state (differs from production)")
 
-	flag.Var(&initialQueues, "queue", "A queue to create on startup (repeat as required)")
+    initialQueues = strings.Split(os.Getenv("QUEUE_NAME"), ",")
 
 	flag.Parse()
 
@@ -380,12 +388,12 @@ func main() {
 		defer srv.Shutdown(context.Background())
 	}
 
-	lis, err := net.Listen("tcp", fmt.Sprintf("%v:%v", *host, *port))
+	lis, err := net.Listen("tcp", fmt.Sprintf("%v:%v", host, port))
 	if err != nil {
 		panic(err)
 	}
 
-	print(fmt.Sprintf("Starting cloud tasks emulator, listening on %v:%v\n", *host, *port))
+	print(fmt.Sprintf("Starting cloud tasks emulator, listening on %v:%v\n", host, port))
 
 	grpcServer := grpc.NewServer()
 	emulatorServer := NewServer()
